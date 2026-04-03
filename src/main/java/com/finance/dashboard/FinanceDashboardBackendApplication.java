@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication
-@EnableJpaAuditing // it enables createdAt / updatedAt auto fill
+@EnableJpaAuditing // it enables createdAt and updatedAt auto fill
 public class FinanceDashboardBackendApplication {
 
 	public static void main(String[] args) {
