@@ -25,11 +25,13 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
-    private final PasswordEncoder passwordEncoder; // ✅ Injected bean
+    private final PasswordEncoder passwordEncoder;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors()
+                .and()
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .sessionManagement(session ->
