@@ -560,16 +560,4 @@ Roles Supported   → 3  (VIEWER, ANALYST, ADMIN)
  PROJECT IS 100% COMPLETE
 ```
 
----
 
-##  What to Do Now
-```
-Step 1 → Create Spring Boot project on start.spring.io
-Step 2 → Copy pom.xml dependencies
-Step 3 → Create all packages and files in order
-Step 4 → Create PostgreSQL database
-Step 5 → Update application.properties
-Step 6 → Run mvn spring-boot:run
-Step 7 → Open swagger-ui.html and test all APIs
-Step 8 → Push to GitHub
-Step 9 → Submit repo link + swagger screenshot
