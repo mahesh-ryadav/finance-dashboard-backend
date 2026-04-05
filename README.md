@@ -19,6 +19,24 @@ control, JWT authentication, financial data management, and dashboard analytics.
 
 ---
 
+### ADMIN
+Email: mahesh.admin@finance.com  
+Password: admin123  
+
+### ANALYST
+Email: mahesh.analyst@finance.com  
+Password: analyst123  
+
+### VIEWER
+Email: mahesh.viewer@finance.com  
+Password: viewer123  
+
+## Live Demo
+Base URL: https://finance-dashboard-backend-production-accf.up.railway.app  
+Swagger UI: https://finance-dashboard-backend-production-accf.up.railway.app/swagger-ui.html  
+
+
+
 ##  Table of Contents
 
 - [Overview](#overview)
