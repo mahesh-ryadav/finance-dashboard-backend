@@ -6,20 +6,21 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final CustomUserDetailsService userDetailsService;
+    private final JwtUserVerifier jwtUserVerifier;
 
     @Override
     protected void doFilterInternal(
@@ -40,33 +41,52 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String token = authHeader.substring(SecurityConstants.TOKEN_PREFIX.length());
 
         try {
-            // Step 4: Extract email from token
-            final String email = jwtUtil.extractEmail(token);
+            // Step 4: Parse & validate token once
+            JwtUtil.ParsedToken parsed = jwtUtil.parseAndValidate(token).orElse(null);
+            if (parsed == null) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            final String email = parsed.email();
+            final String role = parsed.role();
 
             // Step 5: Only process if email exists & not yet authenticated
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                // Step 6: Load user from DB
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-
-                // Step 7: Validate token
-                if (jwtUtil.isTokenValid(token, userDetails)) {
-
-                    //Step 8: Create authentication object
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
-
-                    authToken.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request)
-                    );
-
-                    // Step 9: Set in SecurityContext
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                // Step 6: Optional DB check (cached) for inactive/deleted users and role changes
+                if (!jwtUserVerifier.isUserAllowed(email, role)) {
+                    SecurityContextHolder.clearContext();
+                    filterChain.doFilter(request, response);
+                    return;
                 }
+
+                // Step 7: Create authentication from JWT claims (mostly stateless)
+                List<SimpleGrantedAuthority> authorities = (role == null || role.isBlank())
+                        ? List.of()
+                        : List.of(new SimpleGrantedAuthority("ROLE_" + role));
+
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                org.springframework.security.core.userdetails.User
+                                        .withUsername(email)
+                                        .password("")
+                                        .authorities(authorities)
+                                        .accountExpired(false)
+                                        .accountLocked(false)
+                                        .credentialsExpired(false)
+                                        .disabled(false)
+                                        .build(),
+                                null,
+                                authorities
+                        );
+
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+
+                // Step 8: Set in SecurityContext
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         } catch (Exception e) {
             // If token invalid/expired then do not set authentication

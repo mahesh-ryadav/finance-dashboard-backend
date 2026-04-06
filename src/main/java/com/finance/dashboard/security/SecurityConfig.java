@@ -41,6 +41,7 @@ public class SecurityConfig {
 
                         // Public routes
                         .requestMatchers(SecurityConstants.PUBLIC_URLS).permitAll()
+                        .requestMatchers("/actuator/health/**").permitAll()
 
                         // User management — ADMIN only
                         .requestMatchers(HttpMethod.GET,    "/api/v1/users/**").hasRole("ADMIN")

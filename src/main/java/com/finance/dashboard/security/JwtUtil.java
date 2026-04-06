@@ -3,7 +3,6 @@ package com.finance.dashboard.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -11,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.Optional;
 
 @Component
 public class JwtUtil {
@@ -23,7 +22,7 @@ public class JwtUtil {
     private long jwtExpiration;
 
     // method to generate token
-    public String generateToken(UserDetails userDetails, Long userId, String role) {
+    public String generateToken(org.springframework.security.core.userdetails.UserDetails userDetails, Long userId, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(SecurityConstants.CLAIM_ROLE,    role);
         claims.put(SecurityConstants.CLAIM_USER_ID, userId);
@@ -41,52 +40,30 @@ public class JwtUtil {
                 .compact();
     }
 
-    // validate token
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String email = extractEmail(token);
-        return email.equals(userDetails.getUsername()) && !isTokenExpired(token);
-    }
+    public Optional<ParsedToken> parseAndValidate(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
 
-    // extract email
-    public String extractEmail(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
+            Date exp = claims.getExpiration();
+            if (exp == null || exp.before(new Date())) {
+                return Optional.empty();
+            }
 
-    // extract role
-    public String extractRole(String token) {
-        return extractClaim(token, claims ->
-                claims.get(SecurityConstants.CLAIM_ROLE, String.class));
-    }
+            String email = claims.getSubject();
+            if (email == null || email.isBlank()) {
+                return Optional.empty();
+            }
 
-    // extract userId
-    public Long extractUserId(String token) {
-        return extractClaim(token, claims ->
-                claims.get(SecurityConstants.CLAIM_USER_ID, Long.class));
-    }
-
-    // check expiry
-    public boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    // extract expiry
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    // generic claim extractor
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-//    extract all claim
-    private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+            String role = claims.get(SecurityConstants.CLAIM_ROLE, String.class);
+            Long userId = claims.get(SecurityConstants.CLAIM_USER_ID, Long.class);
+            return Optional.of(new ParsedToken(email, role, userId));
+        } catch (JwtException | IllegalArgumentException e) {
+            return Optional.empty();
+        }
     }
 
     // ── build signing key from secret ─────────────────────────────────
@@ -94,4 +71,6 @@ public class JwtUtil {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
+    public record ParsedToken(String email, String role, Long userId) {}
 }
