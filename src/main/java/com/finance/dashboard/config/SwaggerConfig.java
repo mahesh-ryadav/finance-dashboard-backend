@@ -50,8 +50,8 @@ public class SwaggerConfig {
                                 .name("MIT License")))
                 .servers(List.of(
                         new Server()
-                                .url("http://localhost:8080")
-                                .description("Local Development Server")
+                                .url("https://finance-dashboard-backend-production-accf.up.railway.app")
+                                .description("Production Server (Railway Deployment")
                 ));
     }
 }
